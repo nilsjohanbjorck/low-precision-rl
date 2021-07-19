@@ -1,0 +1,107 @@
+# alg settings
+env: cheetah_run
+action_repeat: 1
+num_train_steps: 510000
+replay_buffer_capacity: ${num_train_steps}
+num_seed_steps: 5000
+
+# eval settings
+device: cuda
+eval_frequency: 10000
+num_eval_episodes: 10
+log_frequency: 10000
+log_save_tb: true
+seed: 1
+
+measure_perf: false
+torch_deterministic: false
+
+agent:
+  name: sac
+  class: sac.SACAgent
+  params:
+    obs_dim: ??? # to be specified later
+    action_dim: ??? # to be specified later
+    action_range: ??? # to be specified later
+    device: ${device}
+    critic_cfg: ${double_q_critic}
+    actor_cfg: ${diag_gaussian_actor}
+    discount: 0.99
+    init_temperature: 0.1
+    alpha_lr: 1e-4
+    betas: [0.9, 0.999]
+    actor_lr: 1e-4
+    actor_update_frequency: 1
+    critic_lr: 1e-4
+    critic_tau: 0.005
+    critic_target_update_frequency: 2
+    batch_size: 1024
+    learnable_temperature: true
+    use_num_adam: false
+    crit_half: false
+    actor_half: false
+    use_grad_scaler: false   
+    adam_eps: 1e-8
+    soft_update_scale: null
+    alpha_half: false
+    alpha_kahan: false
+    crit_kahan: false
+    nan_to_num_actions: false
+    nan_to_num_grads: false
+    nan_to_num_weights_bufs: false
+    mixed_prec_adam: false
+    use_grad_scaler_naive: false
+    use_qtorch: false
+    grad_scaler_cfg: ${grad_scaler} 
+    qtorch_cfg: ${qtorch_quantizer}
+
+double_q_critic:
+  class: sac.DoubleQCritic
+  params:
+    obs_dim: ${agent.params.obs_dim}
+    action_dim: ${agent.params.action_dim}
+    hidden_dim: 1024
+    hidden_depth: 2
+    cast_float: false 
+    use_qtorch: false
+    qtorch_cfg: ${qtorch_quantizer}
+ 
+diag_gaussian_actor:
+  class: sac.DiagGaussianActor
+  params:
+    obs_dim: ${agent.params.obs_dim}
+    action_dim: ${agent.params.action_dim}
+    hidden_depth: 2
+    hidden_dim: 1024
+    log_std_bounds: [-5, 2]
+    tanh_threshold: 20
+    cast_float: false
+    stable_normal: false
+    use_qtorch: false
+    qtorch_cfg: ${qtorch_quantizer}
+
+grad_scaler:
+  class: algs.gscale.grad_scaler
+  params:
+    init_scale: 10000.0
+    min_eps: 1e-7
+    increase_every: 1e4
+    betas: ${agent.params.betas}
+    margin: 1.1
+
+
+qtorch_quantizer:
+  class: quant.quantClass
+  params:
+    exp: 5
+    man: 10
+    rounding: 'nearest'
+
+# hydra configuration
+hydra:
+    run:
+        dir: ./exp/${now:%Y.%m.%d}/${now:%H%M}_${agent.name}
+
+
+
+
